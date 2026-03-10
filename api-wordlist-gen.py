@@ -2,11 +2,7 @@
 """
 API Wordlist Generator — Cipher's Combinatorial Engine v3
 Generates crafted API endpoint wordlists from seed wordlists using naming conventions
-and path patterns observed in real-world APIs across different tech stacks.
-
-v3: Tech-aware profiles, plural intelligence, priority tiers, recon probes,
-    HTTP method hints, scan profiles, bug fixes.
-v2: Input cleaning pipeline + casing control.
+and path patterns observed in real-world APIs.
 
 Zero dependencies. Pure Python 3.
 
@@ -82,245 +78,6 @@ def pluralize(word):
     if low.endswith("f") and not low.endswith("ff"):
         return word[:-1] + "ves"
     return word + "s"
-
-
-# ─────────────────────────────────────────────
-# TECHNOLOGY PROFILES
-# ─────────────────────────────────────────────
-
-TECH_PROFILES = {
-    "spring": {
-        "name": "Spring Boot / Java",
-        "formats": ["camel"],
-        "patterns": ["2", "rest", "byfield", "event"],
-        "trailing_slash": False,
-        "magic_paths": [
-            # Actuator
-            "/actuator", "/actuator/health", "/actuator/health/liveness",
-            "/actuator/health/readiness", "/actuator/info", "/actuator/env",
-            "/actuator/beans", "/actuator/mappings", "/actuator/metrics",
-            "/actuator/configprops", "/actuator/loggers", "/actuator/threaddump",
-            "/actuator/heapdump", "/actuator/scheduledtasks", "/actuator/caches",
-            "/actuator/conditions", "/actuator/flyway", "/actuator/liquibase",
-            "/actuator/sessions", "/actuator/shutdown", "/actuator/prometheus",
-            # Swagger / OpenAPI
-            "/swagger-ui", "/swagger-ui.html", "/swagger-ui/index.html",
-            "/v2/api-docs", "/v3/api-docs", "/v3/api-docs/swagger-config",
-            "/api-docs", "/swagger-resources", "/swagger-resources/configuration/ui",
-            # Spring-specific
-            "/h2-console", "/console", "/druid", "/jolokia",
-            "/management", "/autoconfig", "/dump", "/trace",
-            "/env", "/configprops", "/beans", "/mappings",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2", "/api/v3"],
-    },
-    "django": {
-        "name": "Django / DRF",
-        "formats": ["snake", "kebab"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": True,
-        "magic_paths": [
-            "/admin/", "/admin/login/", "/admin/logout/",
-            "/admin/password_change/", "/admin/jsi18n/",
-            "/api-auth/", "/api-auth/login/", "/api-auth/logout/",
-            "/__debug__/", "/__debug__/sql/", "/__debug__/templates/",
-            "/silk/", "/silk/requests/", "/silk/profiling/",
-            "/django-rq/", "/flower/",
-            "/api/schema/", "/api/docs/", "/api/redoc/",
-            "/static/", "/media/", "/favicon.ico",
-            "/.well-known/", "/robots.txt", "/sitemap.xml",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2"],
-    },
-    "express": {
-        "name": "Express.js / Node.js",
-        "formats": ["camel", "kebab"],
-        "patterns": ["2", "rest", "event"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/swagger.json", "/swagger.yaml", "/api-docs",
-            "/api-docs/swagger.json", "/docs",
-            "/health", "/healthz", "/healthcheck",
-            "/ready", "/readiness", "/liveness",
-            "/metrics", "/status", "/info", "/version",
-            "/__express_route_map", "/debug",
-            "/graphql", "/graphiql", "/playground",
-            "/socket.io/", "/ws",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2", "/v1", "/v2"],
-    },
-    "dotnet": {
-        "name": "ASP.NET / C#",
-        "formats": ["pascal", "camel"],
-        "patterns": ["2", "rest", "byfield"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/swagger", "/swagger/index.html", "/swagger/v1/swagger.json",
-            "/swagger/v2/swagger.json",
-            "/health", "/healthz", "/healthchecks-ui",
-            "/_framework/blazor.boot.json", "/_blazor",
-            "/hangfire", "/hangfire/dashboard", "/elmah", "/elmah.axd",
-            "/signalr/negotiate", "/signalr/hubs",
-            "/odata", "/odata/$metadata",
-            "/_configuration", "/_vs/browserLink",
-            "/identity/account/login", "/identity/account/register",
-            "/connect/token", "/connect/authorize", "/connect/userinfo",
-            "/.well-known/openid-configuration",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2"],
-    },
-    "rails": {
-        "name": "Ruby on Rails",
-        "formats": ["snake", "kebab"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/rails/info", "/rails/info/properties", "/rails/info/routes",
-            "/rails/mailers", "/rails/conductor/action_mailbox/inbound_emails",
-            "/sidekiq", "/sidekiq/busy", "/sidekiq/queues", "/sidekiq/retries",
-            "/letter_opener", "/resque",
-            "/admin", "/admin/dashboard",
-            "/up", "/health", "/healthcheck",
-            "/cable", "/assets/",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2"],
-    },
-    "laravel": {
-        "name": "Laravel / PHP",
-        "formats": ["snake", "kebab"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/telescope", "/telescope/requests", "/telescope/exceptions",
-            "/telescope/queries", "/telescope/models",
-            "/horizon", "/horizon/dashboard", "/horizon/api/stats",
-            "/nova", "/nova/login", "/nova-api",
-            "/_ignition/health-check", "/_ignition/execute-solution",
-            "/livewire/message", "/livewire/preview",
-            "/sanctum/csrf-cookie",
-            "/broadcasting/auth",
-            "/api/documentation", "/docs/api",
-            "/log-viewer", "/clockwork",
-            "/storage/", "/public/",
-            "/login", "/register", "/password/reset", "/password/email",
-            "/email/verify", "/email/resend",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2"],
-    },
-    "fastapi": {
-        "name": "FastAPI / Python",
-        "formats": ["snake", "kebab"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/docs", "/redoc", "/openapi.json", "/openapi.yaml",
-            "/health", "/healthz", "/healthcheck",
-            "/status", "/info", "/version", "/ping",
-            "/metrics", "/ready",
-            "/graphql",
-            "/token", "/login", "/register",
-            "/ws", "/websocket",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2", "/v1", "/v2"],
-    },
-    "flask": {
-        "name": "Flask / Python",
-        "formats": ["snake", "kebab"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/swagger.json", "/swagger.yaml", "/swagger-ui",
-            "/apidocs", "/apidocs/index.html", "/flasgger/",
-            "/spec", "/spec.json",
-            "/static/", "/health", "/healthz", "/status",
-            "/admin/", "/debug/", "/config",
-            "/graphql", "/graphiql",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2", "/v1"],
-    },
-    "go": {
-        "name": "Go (stdlib / Gin / Echo / Fiber)",
-        "formats": ["kebab", "snake"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/debug/pprof/", "/debug/pprof/goroutine", "/debug/pprof/heap",
-            "/debug/pprof/threadcreate", "/debug/pprof/block",
-            "/debug/pprof/mutex", "/debug/pprof/profile",
-            "/debug/pprof/trace", "/debug/pprof/symbol",
-            "/debug/vars", "/debug/requests",
-            "/healthz", "/readyz", "/livez",
-            "/health", "/health/live", "/health/ready",
-            "/metrics", "/swagger/index.html", "/swagger/doc.json",
-            "/version", "/info", "/ping", "/pong",
-        ],
-        "path_prefixes": ["/api", "/api/v1", "/api/v2", "/v1", "/v2"],
-    },
-    "nextjs": {
-        "name": "Next.js",
-        "formats": ["camel", "kebab"],
-        "patterns": ["2", "rest"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/api/auth/signin", "/api/auth/signout", "/api/auth/session",
-            "/api/auth/csrf", "/api/auth/providers", "/api/auth/callback",
-            "/_next/data/", "/_next/static/",
-            "/api/trpc/", "/api/graphql",
-            "/api/health", "/api/status",
-        ],
-        "path_prefixes": ["/api"],
-    },
-    "graphql": {
-        "name": "GraphQL API",
-        "formats": ["camel"],
-        "patterns": ["2", "byfield", "event"],
-        "trailing_slash": False,
-        "magic_paths": [
-            "/graphql", "/graphiql", "/playground",
-            "/altair", "/voyager",
-            "/graphql/schema", "/graphql/stream",
-            "/subscriptions",
-        ],
-        "path_prefixes": ["/api", "/v1"],
-    },
-}
-
-# Collect all magic paths for fingerprinting
-ALL_FINGERPRINT_PATHS = {}
-for _tech, _profile in TECH_PROFILES.items():
-    ALL_FINGERPRINT_PATHS[_tech] = _profile["magic_paths"]
-
-
-# ─────────────────────────────────────────────
-# SCAN PROFILES
-# ─────────────────────────────────────────────
-
-SCAN_PROFILES = {
-    "recon": {
-        "description": "Quick high-probability endpoints for initial discovery",
-        "patterns": ["2", "rest"],
-        "formats": ["kebab", "camel"],
-        "tier": "high",
-    },
-    "full": {
-        "description": "All patterns, all formats — maximum coverage",
-        "patterns": ["2", "3", "rest", "byfield", "prefixed", "suffixed", "event"],
-        "formats": ["kebab", "snake", "camel", "pascal", "dot", "concat", "path"],
-        "tier": "all",
-    },
-    "rest": {
-        "description": "REST paths only — /resource/{id}/action",
-        "patterns": ["rest"],
-        "formats": ["kebab"],
-        "tier": "all",
-    },
-    "rpc": {
-        "description": "RPC-style — camelCase/PascalCase function names",
-        "patterns": ["2", "byfield", "event"],
-        "formats": ["camel", "pascal"],
-        "tier": "all",
-    },
-}
 
 
 # ─────────────────────────────────────────────
@@ -529,8 +286,8 @@ def clean_word(word):
 
 
 def clean_wordlist(words_raw, min_length=2, remove_numbers_only=True):
-    """Full cleaning pipeline: strip → remove empties/comments → lowercase →
-    remove special chars → min length → remove pure numbers → dedup → sort."""
+    """Full cleaning pipeline: strip -> remove empties/comments -> lowercase ->
+    remove special chars -> min length -> remove pure numbers -> dedup -> sort."""
     stats = {
         "raw_total": len(words_raw), "empty_removed": 0, "comments_removed": 0,
         "short_removed": 0, "numbers_removed": 0, "duplicates_removed": 0,
@@ -589,7 +346,7 @@ def load_and_clean(filepath, min_length=2, keep_numbers=False, verbose=True):
         removed = stats["raw_total"] - stats["final_count"]
         if removed > 0:
             print(f"[*] Loaded {filepath}", file=sys.stderr)
-            print(f"    Raw: {stats['raw_total']:>6} → Cleaned: {stats['final_count']:>6} "
+            print(f"    Raw: {stats['raw_total']:>6} -> Cleaned: {stats['final_count']:>6} "
                   f"(removed {removed}: "
                   f"{stats['duplicates_removed']} dupes, "
                   f"{stats['short_removed']} short, "
@@ -599,7 +356,7 @@ def load_and_clean(filepath, min_length=2, keep_numbers=False, verbose=True):
                   f"{stats['invalid_removed']} invalid)",
                   file=sys.stderr)
         else:
-            print(f"[*] Loaded {filepath} — {stats['final_count']:>6} words (clean)",
+            print(f"[*] Loaded {filepath} -- {stats['final_count']:>6} words (clean)",
                   file=sys.stderr)
     return cleaned, stats
 
@@ -650,13 +407,13 @@ FORMAT_FUNCTIONS = {
 }
 
 FORMAT_CASING = {
-    "kebab":  "all lowercase, hyphen          → create-user",
-    "snake":  "all lowercase, underscore       → create_user",
-    "dot":    "all lowercase, dot              → create.user",
-    "concat": "all lowercase, no separator     → createuser",
-    "camel":  "first lower, rest Capitalized   → createUser",
-    "pascal": "every word Capitalized           → CreateUser",
-    "path":   "all lowercase, slash            → /create/user",
+    "kebab":  "all lowercase, hyphen          -> create-user",
+    "snake":  "all lowercase, underscore       -> create_user",
+    "dot":    "all lowercase, dot              -> create.user",
+    "concat": "all lowercase, no separator     -> createuser",
+    "camel":  "first lower, rest Capitalized   -> createUser",
+    "pascal": "every word Capitalized           -> CreateUser",
+    "path":   "all lowercase, slash            -> /create/user",
 }
 
 
@@ -675,9 +432,9 @@ def pattern_2part(actions, objects, fmt_fn):
 
 def pattern_3part(actions, objects, modifiers, fmt_fn):
     """3-part combos — only the 3 realistic permutations:
-      action-modifier-object  → get-all-users
-      modifier-action-object  → bulk-create-orders
-      action-object-modifier  → export-orders-csv
+      action-modifier-object  -> get-all-users
+      modifier-action-object  -> bulk-create-orders
+      action-object-modifier  -> export-orders-csv
     """
     results = set()
     for a, o, m in itertools.product(actions, objects, modifiers):
@@ -762,7 +519,7 @@ def pattern_suffixed(actions, objects, suffixes, fmt_fn):
 
 
 def pattern_event(actions, objects, fmt_fn):
-    """Event/callback patterns — optimized to avoid redundant computation."""
+    """Event/callback patterns."""
     results = set()
     event_prefixes = ["on", "handle", "before", "after"]
     single_prefixes = ["do", "process", "trigger", "is", "has", "can", "should"]
@@ -803,15 +560,15 @@ def estimate_output(actions, objects, modifiers, prefixes, suffixes, fields,
     if "2" in patterns:
         total += (a * o * 2) * nf
     if "3" in patterns and m > 0:
-        total += (a * o * m * 3) * nf  # Fixed: 3 permutations, not 6
+        total += (a * o * m * 3) * nf
     if "rest" in patterns:
-        total += (a * o * 6) + (o * 9)  # base + singletons
+        total += (a * o * 6) + (o * 9)
         if so > 0:
             total += (a * o * so * 4)
         if p > 0:
             total += (a * o * p * 4)
     if "byfield" in patterns and fl > 0:
-        total += (a * o * fl * 5) * nf  # Now respects format
+        total += (a * o * fl * 5) * nf
     if "prefixed" in patterns and p > 0:
         total += (a * o * p * 2) * nf
     if "suffixed" in patterns and s > 0:
@@ -828,86 +585,71 @@ def estimate_output(actions, objects, modifiers, prefixes, suffixes, fields,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Cipher's API Wordlist Generator v3 — Tech-aware combinatorial endpoint builder",
+        description="Cipher's API Wordlist Generator v3 — Combinatorial endpoint builder",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 EXAMPLES:
-  # Target a Spring Boot API
-  %(prog)s -a actions.txt -o objects.txt --tech spring -O spring.txt
-
-  # Target a Django REST Framework API
-  %(prog)s -a actions.txt -o objects.txt --tech django -O django.txt
-
-  # Quick recon — high-probability hits only
-  %(prog)s -a actions.txt -o objects.txt --profile recon -O recon.txt
-
-  # Identify the tech stack first (probe fingerprint paths)
-  %(prog)s --recon-probe
-
-  # Probe only for Spring-specific paths
-  %(prog)s --recon-probe --tech spring
-
-  # Full generation with tier filtering
-  %(prog)s -a actions.txt -o objects.txt -f all -p all --tier medium -O medium.txt
-
-  # Output with HTTP method hints for method-aware tools
-  %(prog)s -a actions.txt -o objects.txt --tech fastapi --methods -O methods.txt
-
-  # Classic v2 usage still works
+  # Basic 2-part kebab + camel
   %(prog)s -a actions.txt -o objects.txt -f kebab camel -p 2
 
-  # REST paths with all optional wordlists
-  %(prog)s -a actions.txt -o objects.txt --sub-objects subs.txt \\
-           --prefixes prefixes.txt -p rest --sort -O rest.txt
+  # High-tier REST paths with nested resources
+  %(prog)s -a actions.txt -o objects.txt -p rest --tier high \\
+           --sub-objects subs.txt --prefixes prefixes.txt -O rest.txt
+
+  # Spring-style camelCase with byField lookups
+  %(prog)s -a actions.txt -o objects.txt -f camel -p 2 byfield event \\
+           --fields fields.txt --tier high -O spring-style.txt
+
+  # Django-style snake_case REST with trailing slashes
+  %(prog)s -a actions.txt -o objects.txt -f snake -p 2 rest \\
+           --trailing-slash --tier medium -O django-style.txt
+
+  # ASP.NET-style PascalCase with byField
+  %(prog)s -a actions.txt -o objects.txt -f pascal -p 2 byfield \\
+           --fields fields.txt -O dotnet-style.txt
+
+  # Go-style kebab REST paths
+  %(prog)s -a actions.txt -o objects.txt -f kebab -p rest \\
+           --tier high -O go-style.txt
+
+  # Full generation with all patterns and HTTP method hints
+  %(prog)s -a actions.txt -o objects.txt -m modifiers.txt \\
+           --prefixes prefixes.txt --suffixes suffixes.txt \\
+           --fields fields.txt --sub-objects subs.txt \\
+           -f all -p all --methods --sort -O everything.txt
+
+  # Output with HTTP method hints
+  %(prog)s -a actions.txt -o objects.txt --methods -O methods.txt
 
   # Clean dirty wordlists without generating
   %(prog)s -a dirty.txt -o messy.txt --clean-only --save-cleaned cleaned/
 
-TECH PROFILES (--tech):
-  spring    Spring Boot / Java          camelCase, REST + byField + events
-  django    Django / DRF                snake_case, REST
-  express   Express.js / Node.js        camelCase, REST + events
-  dotnet    ASP.NET / C#                PascalCase, REST + byField
-  rails     Ruby on Rails               snake_case, REST
-  laravel   Laravel / PHP               snake_case, REST
-  fastapi   FastAPI / Python            snake_case, REST
-  flask     Flask / Python              snake_case, REST
-  go        Go (Gin/Echo/Fiber)         kebab-case, REST
-  nextjs    Next.js                     camelCase, REST
-  graphql   GraphQL API                 camelCase, byField + events
-
-SCAN PROFILES (--profile):
-  recon     Quick high-probability hits (high tier, kebab+camel, 2-part+REST)
-  full      Maximum coverage (all tiers, all formats, all patterns)
-  rest      REST paths only
-  rpc       RPC-style function names (camel/pascal, byField + events)
-
-PRIORITY TIERS (--tier):
-  high      ~60 core verbs × ~90 common resources — fast, focused
-  medium    ~150 verbs × ~250 resources — good coverage
-  all       Everything in your seed files — maximum breadth
-
 FORMATS (-f):
-  kebab → create-user    snake → create_user    camel → createUser
-  pascal → CreateUser    dot → create.user      concat → createuser
-  path → /create/user   all → all of the above
+  kebab  -> create-user    snake  -> create_user    camel  -> createUser
+  pascal -> CreateUser     dot    -> create.user    concat -> createuser
+  path   -> /create/user   all    -> all of the above
 
 PATTERNS (-p):
   2        action+object (2-part combos)
   3        action+modifier+object (3-part, needs -m)
   rest     /resource/{id}/action (REST paths with plural intelligence)
-  byfield  getUserByEmail (now respects -f format flag)
+  byfield  getUserByEmail (needs --fields)
   prefixed admin-create-user (needs --prefixes)
   suffixed export-orders-csv (needs --suffixes)
   event    onUserCreate, handlePayment, doExport
   all      all patterns
+
+PRIORITY TIERS (--tier):
+  high     ~68 core verbs x ~124 common resources — fast, focused
+  medium   ~167 verbs x ~288 resources — good coverage
+  all      Everything in your seed files — maximum breadth
         """
     )
 
-    # ── Required wordlists (not required if --recon-probe) ──
-    parser.add_argument("-a", "--actions", default=None,
+    # ── Required wordlists ──
+    parser.add_argument("-a", "--actions", required=True,
                         help="Path to actions/verbs wordlist")
-    parser.add_argument("-o", "--objects", default=None,
+    parser.add_argument("-o", "--objects", required=True,
                         help="Path to objects/nouns wordlist")
 
     # ── Optional wordlists ──
@@ -922,18 +664,18 @@ PATTERNS (-p):
     parser.add_argument("--sub-objects", default=None,
                         help="Path to sub-objects wordlist (for REST nested patterns)")
 
-    # ── v3: Tech & Profile ──
-    parser.add_argument("--tech", default=None,
-                        choices=list(TECH_PROFILES.keys()),
-                        help="Target technology/framework (sets optimal format+patterns)")
-    parser.add_argument("--profile", default=None,
-                        choices=list(SCAN_PROFILES.keys()),
-                        help="Scan profile preset (recon/full/rest/rpc)")
-    parser.add_argument("--tier", default=None,
+    # ── Format & pattern selection ──
+    parser.add_argument("-f", "--formats", nargs="+", default=["kebab", "snake", "camel"],
+                        choices=["kebab", "snake", "dot", "concat", "camel", "pascal", "path", "all"],
+                        help="Output naming formats (default: kebab snake camel)")
+    parser.add_argument("-p", "--patterns", nargs="+", default=["2"],
+                        choices=["2", "3", "rest", "byfield", "prefixed", "suffixed", "event", "all"],
+                        help="Patterns to generate (default: 2)")
+
+    # ── Tier & options ──
+    parser.add_argument("--tier", default="all",
                         choices=["high", "medium", "all"],
                         help="Priority tier — filter seed words by frequency (default: all)")
-    parser.add_argument("--recon-probe", action="store_true", default=False,
-                        help="Output framework fingerprint paths and exit")
     parser.add_argument("--methods", action="store_true", default=False,
                         help="Prefix output with HTTP method hints (GET /path)")
     parser.add_argument("--trailing-slash", action="store_true", default=False,
@@ -950,14 +692,6 @@ PATTERNS (-p):
                         help="Only clean input wordlists and exit")
     parser.add_argument("--save-cleaned", default=None, metavar="DIR",
                         help="Save cleaned wordlists to directory")
-
-    # ── Format & pattern selection (None = resolve from tech/profile/defaults) ──
-    parser.add_argument("-f", "--formats", nargs="+", default=None,
-                        choices=["kebab", "snake", "dot", "concat", "camel", "pascal", "path", "all"],
-                        help="Output naming formats (default: kebab snake camel)")
-    parser.add_argument("-p", "--patterns", nargs="+", default=None,
-                        choices=["2", "3", "rest", "byfield", "prefixed", "suffixed", "event", "all"],
-                        help="Patterns to generate (default: 2)")
 
     # ── Output control ──
     parser.add_argument("--output", "-O", default=None,
@@ -976,101 +710,20 @@ PATTERNS (-p):
     args = parser.parse_args()
 
     # ─────────────────────────────────────────
-    # RECON PROBE MODE — early exit
+    # RESOLVE "ALL"
     # ─────────────────────────────────────────
-    if args.recon_probe:
-        if args.tech:
-            paths = TECH_PROFILES[args.tech]["magic_paths"]
-            label = TECH_PROFILES[args.tech]["name"]
-            print(f"[*] Fingerprint paths for {label}:", file=sys.stderr)
-        else:
-            paths = []
-            for tech_name, tech_data in TECH_PROFILES.items():
-                paths.extend(tech_data["magic_paths"])
-            paths = sorted(set(paths))
-            print(f"[*] Combined fingerprint paths for all {len(TECH_PROFILES)} frameworks:", file=sys.stderr)
-
-        print(f"[*] Total: {len(paths)} paths", file=sys.stderr)
-
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write("\n".join(paths) + "\n")
-            print(f"[+] Written → {args.output}", file=sys.stderr)
-        else:
-            for p in paths:
-                print(p)
-        sys.exit(0)
-
-    # ─────────────────────────────────────────
-    # RESOLVE FORMATS / PATTERNS / TIER
-    # Priority: explicit flags > --tech > --profile > defaults
-    # ─────────────────────────────────────────
-    user_set_formats = args.formats is not None
-    user_set_patterns = args.patterns is not None
-    user_set_tier = args.tier is not None
-
-    # Start with defaults
-    resolved_formats = ["kebab", "snake", "camel"]
-    resolved_patterns = ["2"]
-    resolved_tier = "all"
-    trailing_slash = args.trailing_slash
-    tech_magic_paths = []
-    tech_path_prefixes = []
-
-    # Apply --profile
-    if args.profile:
-        p = SCAN_PROFILES[args.profile]
-        resolved_formats = p["formats"]
-        resolved_patterns = p["patterns"]
-        resolved_tier = p["tier"]
-
-    # Apply --tech (overrides profile for formats/patterns)
-    if args.tech:
-        t = TECH_PROFILES[args.tech]
-        resolved_formats = t["formats"]
-        resolved_patterns = t["patterns"]
-        trailing_slash = t.get("trailing_slash", False) or args.trailing_slash
-        tech_magic_paths = t["magic_paths"]
-        tech_path_prefixes = t.get("path_prefixes", [])
-
-    # Explicit flags always win
-    if user_set_formats:
-        resolved_formats = args.formats
-    if user_set_patterns:
-        resolved_patterns = args.patterns
-    if user_set_tier:
-        resolved_tier = args.tier
-
-    args.formats = resolved_formats
-    args.patterns = resolved_patterns
-    args.tier = resolved_tier
-
-    # Resolve "all"
     if "all" in args.formats:
         args.formats = list(FORMAT_FUNCTIONS.keys())
     if "all" in args.patterns:
         args.patterns = ["2", "3", "rest", "byfield", "prefixed", "suffixed", "event"]
 
     # ─────────────────────────────────────────
-    # VALIDATE REQUIRED INPUTS
-    # ─────────────────────────────────────────
-    if not args.actions or not args.objects:
-        if args.clean_only:
-            pass  # clean_only can work with whatever is provided
-        else:
-            parser.error("Arguments -a/--actions and -o/--objects are required "
-                        "(unless using --recon-probe or --clean-only)")
-
-    # ─────────────────────────────────────────
     # LOAD + CLEAN WORDLISTS
     # ─────────────────────────────────────────
     print(f"\n{'='*60}", file=sys.stderr)
     print(f"  CIPHER'S API WORDLIST GENERATOR v3", file=sys.stderr)
-    if args.tech:
-        print(f"  Tech: {TECH_PROFILES[args.tech]['name']}", file=sys.stderr)
-    if args.profile:
-        print(f"  Profile: {args.profile} — {SCAN_PROFILES[args.profile]['description']}", file=sys.stderr)
-    print(f"  Tier: {args.tier} | Min length: {args.min_length} | Plural: {not args.no_plural}", file=sys.stderr)
+    print(f"  Tier: {args.tier} | Formats: {', '.join(args.formats)} | "
+          f"Patterns: {', '.join(args.patterns)}", file=sys.stderr)
     print(f"{'='*60}", file=sys.stderr)
 
     sources = {}
@@ -1107,13 +760,13 @@ PATTERNS (-p):
     has_loaded = any(fpath is not None for _, (fpath, _, _) in sources.items())
     if has_loaded:
         print(f"\n  {'Wordlist':<15} {'Raw':>8} {'Cleaned':>8} {'Removed':>8}", file=sys.stderr)
-        print(f"  {'─'*43}", file=sys.stderr)
+        print(f"  {'-'*43}", file=sys.stderr)
         for name, (fpath, words, stats) in sources.items():
             if fpath is not None:
                 removed = stats["raw_total"] - stats["final_count"]
                 print(f"  {name:<15} {stats['raw_total']:>8} {stats['final_count']:>8} {removed:>8}",
                       file=sys.stderr)
-        print(f"  {'─'*43}", file=sys.stderr)
+        print(f"  {'-'*43}", file=sys.stderr)
 
     # Save cleaned wordlists if requested
     if args.save_cleaned:
@@ -1135,8 +788,8 @@ PATTERNS (-p):
         pre_a, pre_o = len(actions), len(objects)
         actions = filter_by_tier(actions, args.tier, HIGH_TIER_ACTIONS, MEDIUM_TIER_ACTIONS)
         objects = filter_by_tier(objects, args.tier, HIGH_TIER_OBJECTS, MEDIUM_TIER_OBJECTS)
-        print(f"\n[*] Tier '{args.tier}' filter: actions {pre_a}→{len(actions)}, "
-              f"objects {pre_o}→{len(objects)}", file=sys.stderr)
+        print(f"\n[*] Tier '{args.tier}' filter: actions {pre_a}->{len(actions)}, "
+              f"objects {pre_o}->{len(objects)}", file=sys.stderr)
 
     # Validate
     if not actions:
@@ -1168,14 +821,9 @@ PATTERNS (-p):
     if args.preview:
         est = estimate_output(actions, objects, modifiers, prefixes, suffixes,
                               fields, sub_objects, args.formats, args.patterns)
-        if tech_magic_paths:
-            est += len(tech_magic_paths)
         print(f"\n[*] Estimated output: ~{est:,} lines", file=sys.stderr)
         print(f"[*] Formats: {', '.join(args.formats)}", file=sys.stderr)
         print(f"[*] Patterns: {', '.join(args.patterns)}", file=sys.stderr)
-        if args.tech:
-            print(f"[*] Tech: {TECH_PROFILES[args.tech]['name']} "
-                  f"(+{len(tech_magic_paths)} magic paths)", file=sys.stderr)
         sys.exit(0)
 
     # ─────────────────────────────────────────
@@ -1184,8 +832,6 @@ PATTERNS (-p):
     print(f"\n[+] Generating wordlist...", file=sys.stderr)
     print(f"    Formats: {', '.join(args.formats)}", file=sys.stderr)
     print(f"    Patterns: {', '.join(args.patterns)}", file=sys.stderr)
-    if args.tech:
-        print(f"    Tech: {TECH_PROFILES[args.tech]['name']}", file=sys.stderr)
 
     if args.no_dedup:
         all_results = []
@@ -1215,13 +861,9 @@ PATTERNS (-p):
                 pattern_results.update(pattern_3part(actions, objects, modifiers, fmt_fn))
 
         elif pattern == "rest":
-            rest_prefixes = prefixes
-            # If --tech provided path_prefixes and no explicit --prefixes, use tech ones
-            if tech_path_prefixes and not args.prefixes:
-                rest_prefixes = [p.strip("/") for p in tech_path_prefixes]
             pattern_results.update(pattern_rest(
-                actions, objects, sub_objects, rest_prefixes,
-                use_plural=use_plural, trailing_slash=trailing_slash
+                actions, objects, sub_objects, prefixes,
+                use_plural=use_plural, trailing_slash=args.trailing_slash
             ))
 
         elif pattern == "byfield":
@@ -1247,14 +889,7 @@ PATTERNS (-p):
         count = len(pattern_results)
         pattern_stats[pattern] = count
         collect(pattern_results)
-        print(f"    [{pattern:>8}] → {count:>10,} entries", file=sys.stderr)
-
-    # ─── Inject tech magic paths ──
-    if tech_magic_paths:
-        collect(set(tech_magic_paths))
-        pattern_stats["magic"] = len(tech_magic_paths)
-        print(f"    [{'magic':>8}] → {len(tech_magic_paths):>10,} entries "
-              f"({TECH_PROFILES[args.tech]['name']})", file=sys.stderr)
+        print(f"    [{pattern:>8}] -> {count:>10,} entries", file=sys.stderr)
 
     # ─────────────────────────────────────────
     # POST-PROCESS: Methods, Sort, Limit
@@ -1284,7 +919,7 @@ PATTERNS (-p):
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write("\n".join(output_list) + "\n")
-        print(f"\n[+] Written {total:,} unique entries → {args.output}", file=sys.stderr)
+        print(f"\n[+] Written {total:,} unique entries -> {args.output}", file=sys.stderr)
     else:
         for entry in output_list:
             print(entry)
@@ -1297,18 +932,14 @@ PATTERNS (-p):
         print(f"\n{'='*60}", file=sys.stderr)
         print(f"  GENERATION STATS", file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
-        if args.tech:
-            print(f"\n  Tech Profile: {TECH_PROFILES[args.tech]['name']}", file=sys.stderr)
-        if args.profile:
-            print(f"  Scan Profile: {args.profile}", file=sys.stderr)
         print(f"  Priority Tier: {args.tier}", file=sys.stderr)
         print(f"  Pluralization: {'enabled' if use_plural else 'disabled'}", file=sys.stderr)
         print(f"  HTTP Methods: {'enabled' if args.methods else 'disabled'}", file=sys.stderr)
-        print(f"  Trailing Slash: {'enabled' if trailing_slash else 'disabled'}", file=sys.stderr)
+        print(f"  Trailing Slash: {'enabled' if args.trailing_slash else 'disabled'}", file=sys.stderr)
 
         print(f"\n  Seed Wordlists (after cleaning + tier filter):", file=sys.stderr)
         print(f"    {'Name':<15} {'Clean':>6}", file=sys.stderr)
-        print(f"    {'─'*25}", file=sys.stderr)
+        print(f"    {'-'*25}", file=sys.stderr)
         print(f"    {'actions':<15} {len(actions):>6}", file=sys.stderr)
         print(f"    {'objects':<15} {len(objects):>6}", file=sys.stderr)
         if modifiers:
@@ -1329,7 +960,7 @@ PATTERNS (-p):
         print(f"\n  Pattern Breakdown:", file=sys.stderr)
         for pat, count in pattern_stats.items():
             print(f"    {pat:>12}: {count:>10,}", file=sys.stderr)
-        print(f"  {'─'*30}", file=sys.stderr)
+        print(f"  {'-'*30}", file=sys.stderr)
         print(f"  {'Total output':>12}: {total:>10,}", file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
 

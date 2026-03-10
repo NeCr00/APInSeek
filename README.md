@@ -1,6 +1,6 @@
 # API Wordlist Generator — Cipher's Combinatorial Engine v3
 
-A tech-aware, combinatorial API endpoint wordlist generator for penetration testing. Generates crafted endpoint candidates from seed wordlists using naming conventions and path patterns observed in real-world APIs across 11 different tech stacks.
+A combinatorial API endpoint wordlist generator for penetration testing. Generates crafted endpoint candidates from seed wordlists using naming conventions and path patterns observed in real-world APIs.
 
 Zero dependencies. Pure Python 3.
 
@@ -8,94 +8,71 @@ Zero dependencies. Pure Python 3.
 
 ## Table of Contents
 
-- [Why This Tool](#why-this-tool)
 - [Quick Start](#quick-start)
-- [Architecture](#architecture)
+- [How It Works](#how-it-works)
 - [Seed Wordlists](#seed-wordlists)
 - [Naming Formats](#naming-formats)
 - [Generation Patterns](#generation-patterns)
-- [Technology Profiles](#technology-profiles)
-- [Scan Profiles](#scan-profiles)
 - [Priority Tiers](#priority-tiers)
-- [Recon Probe Mode](#recon-probe-mode)
 - [HTTP Method Hints](#http-method-hints)
 - [Plural Intelligence](#plural-intelligence)
 - [Input Cleaning Pipeline](#input-cleaning-pipeline)
+- [Tech Stack Cheat Sheet](#tech-stack-cheat-sheet)
 - [CLI Reference](#cli-reference)
-- [Real-World Workflows](#real-world-workflows)
+- [Usage Examples](#usage-examples)
 - [Output Sizing Guide](#output-sizing-guide)
-
----
-
-## Why This Tool
-
-Generic wordlists like `common.txt` or `raft-large` cast a wide net but miss the combinatorial nature of API endpoints. Real APIs follow predictable patterns:
-
-- **Spring Boot** uses `camelCase` RPC names: `getUserById`, `createOrder`, `deletePayment`
-- **Django REST** uses `snake_case` with trailing slashes: `/user_profiles/`, `/order_items/`
-- **ASP.NET** uses `PascalCase`: `GetUserByEmail`, `CreateSubscription`
-- **Go APIs** use `kebab-case` REST paths: `/users/{id}/activate`, `/orders/{id}/cancel`
-
-This tool generates endpoint candidates that match these real conventions, instead of testing random paths that would never exist.
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1. Fingerprint the target stack
-python api-wordlist-gen.py --recon-probe -O probe.txt
-# Feed probe.txt to ffuf/feroxbuster against the target
+# Basic generation — kebab + camel, 2-part combos
+python api-wordlist-gen.py -a words/top-api-verbs.txt -o words/top-api-nouns.txt \
+  -O endpoints.txt
 
-# 2. Identified Spring Boot? Generate targeted endpoints
-python api-wordlist-gen.py \
-  -a words/top-api-verbs.txt \
-  -o words/top-api-nouns.txt \
-  --tech spring --tier high \
-  -O spring-endpoints.txt
+# High-tier only for a fast, focused scan
+python api-wordlist-gen.py -a words/top-api-verbs.txt -o words/top-api-nouns.txt \
+  --tier high -O focused.txt
 
-# 3. Feed to your fuzzer
-ffuf -u https://target.com/api/FUZZ -w spring-endpoints.txt
+# Feed to your fuzzer
+ffuf -u https://target.com/api/FUZZ -w focused.txt
 ```
 
 ---
 
-## Architecture
+## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     CLI FLAGS                            │
-│  -a verbs.txt  -o nouns.txt  --tech spring  --tier high │
-└──────────┬──────────────────────────────────────────────┘
-           │
-           ▼
-┌──────────────────────┐    ┌─────────────────────────────┐
-│  INPUT CLEANING      │    │  FLAG PRECEDENCE            │
-│  strip → lowercase   │    │  explicit -f/-p             │
-│  → remove specials   │    │    > --tech                 │
-│  → min length        │    │    > --profile              │
-│  → dedup → sort      │    │    > hardcoded defaults     │
-└──────────┬───────────┘    └──────────┬──────────────────┘
-           │                           │
-           ▼                           ▼
-┌──────────────────────┐    ┌─────────────────────────────┐
-│  TIER FILTERING      │    │  RESOLVE FORMATS + PATTERNS │
-│  high / medium / all │    │  from tech/profile/flags    │
-└──────────┬───────────┘    └──────────┬──────────────────┘
-           │                           │
-           ▼                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                  PATTERN GENERATORS                      │
-│  2-part │ 3-part │ REST │ byField │ prefixed │ suffixed │ event │
-│         │        │  ↑   │         │          │          │       │
-│         │        │  └── plural intelligence              │
-└──────────┬──────────────────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────────────────────────────┐
-│  POST-PROCESSING                                         │
-│  dedup → HTTP method hints → sort → limit → output      │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  INPUT: seed wordlists (verbs, nouns, modifiers...)  │
+└───────────────────────┬──────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────┐
+│  CLEANING PIPELINE                                    │
+│  strip → lowercase → remove specials → dedup → sort  │
+└───────────────────────┬──────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────┐
+│  TIER FILTERING (optional)                            │
+│  high (~68 verbs × ~124 nouns)                       │
+│  medium (~167 × ~288)                                │
+│  all (528 × 1,800)                                   │
+└───────────────────────┬──────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────┐
+│  PATTERN GENERATORS × FORMAT TRANSFORMS               │
+│  7 patterns × 7 formats = targeted endpoint combos   │
+└───────────────────────┬──────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────┐
+│  POST-PROCESSING                                      │
+│  dedup → HTTP method hints → sort → limit → output   │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -106,12 +83,12 @@ The `words/` directory contains curated seed files:
 
 | File | Count | Purpose |
 |------|------:|---------|
-| `top-api-verbs.txt` | 528 | Actions/verbs — CRUD, auth, state changes, infrastructure |
-| `top-api-nouns.txt` | 1,800 | Objects/resources — users, orders, configs, k8s resources |
-| `modifiers.txt` | 217 | Adjectives/qualifiers for 3-part patterns (all, active, bulk) |
+| `top-api-verbs.txt` | 528 | Actions — CRUD, auth, state changes, infrastructure |
+| `top-api-nouns.txt` | 1,800 | Resources — users, orders, configs, k8s resources |
+| `modifiers.txt` | 217 | Qualifiers for 3-part patterns (all, active, bulk) |
 | `top-prefixes.txt` | 257 | URL path prefixes (v1, admin, internal, staging) |
 | `suffixes.txt` | 77 | File format suffixes (json, xml, csv, pdf) |
-| `sub-objects.txt` | 138 | Nested sub-resources (roles, permissions, items, payments) |
+| `sub-objects.txt` | 138 | Nested sub-resources (roles, permissions, items) |
 | `fields/top-fields.txt` | 339 | Property names for byField patterns (email, status, id) |
 | `fields/identity.txt` | 74 | Identity-specific fields (username, token, apikey) |
 | `fields/status.txt` | 56 | Status/state fields (active, pending, locked) |
@@ -122,47 +99,55 @@ All wordlists are hand-curated for API relevance. No generic English dictionarie
 
 ## Naming Formats
 
-Seven output formats covering all major API naming conventions:
+Seven output formats (`-f`) covering all major API naming conventions:
 
-| Format | Flag | Example | Used By |
-|--------|------|---------|---------|
-| `kebab` | `-f kebab` | `create-user` | Go, Ruby, REST URLs |
-| `snake` | `-f snake` | `create_user` | Django, Rails, Laravel, FastAPI, Flask |
-| `camel` | `-f camel` | `createUser` | Spring Boot, Express, Next.js, GraphQL |
-| `pascal` | `-f pascal` | `CreateUser` | ASP.NET, C# |
-| `dot` | `-f dot` | `create.user` | Java package-style, some configs |
-| `concat` | `-f concat` | `createuser` | Compressed/legacy endpoints |
-| `path` | `-f path` | `/create/user` | Path-segment style |
+| Format | Example | Typically Used By |
+|--------|---------|-------------------|
+| `kebab` | `create-user` | Go, Ruby, REST URLs |
+| `snake` | `create_user` | Django, Rails, Laravel, FastAPI, Flask |
+| `camel` | `createUser` | Spring Boot, Express, Next.js, GraphQL |
+| `pascal` | `CreateUser` | ASP.NET, C# |
+| `dot` | `create.user` | Java package-style, some configs |
+| `concat` | `createuser` | Compressed/legacy endpoints |
+| `path` | `/create/user` | Path-segment style |
 
-Use `all` to generate in every format: `-f all`
+```bash
+# Single format
+-f camel
 
-Multiple formats at once: `-f kebab camel pascal`
+# Multiple formats
+-f kebab camel pascal
+
+# All formats
+-f all
+```
+
+Default: `kebab snake camel`
 
 ---
 
 ## Generation Patterns
 
-Seven pattern generators, each producing a different endpoint structure:
+Seven pattern generators (`-p`), each producing a different endpoint structure:
 
 ### `2` — Two-part combos (default)
-The most common API pattern. Combines action + object in both orderings.
+Combines action + object in both orderings.
 ```
-createUser, userCreate
-delete-order, order-delete
+createUser, userCreate, delete-order, order-delete
 ```
-**Requires:** `-a` actions, `-o` objects
+**Requires:** `-a`, `-o`
 
 ### `3` — Three-part combos
-Adds a modifier dimension. Only the 3 realistic permutations (not all 6):
+Adds a modifier. Only the 3 realistic permutations:
 ```
 get-all-users        (action-modifier-object)
 bulk-create-orders   (modifier-action-object)
 export-orders-csv    (action-object-modifier)
 ```
-**Requires:** `-a` actions, `-o` objects, `-m` modifiers
+**Requires:** `-a`, `-o`, `-m`
 
 ### `rest` — REST path patterns
-Generates plural-aware RESTful URL paths with `{id}` placeholders:
+Plural-aware RESTful URL paths with `{id}` placeholders:
 ```
 /users                     collection
 /users/{id}                single resource
@@ -170,159 +155,75 @@ Generates plural-aware RESTful URL paths with `{id}` placeholders:
 /users/search              collection utility
 /users/{id}/roles          nested sub-resource
 /users/{id}/roles/{sid}    deep nested
-/api/v1/users/{id}         prefixed paths
+/api/v1/users/{id}         prefixed path (with --prefixes)
 ```
-**Requires:** `-a` actions, `-o` objects
-**Optional:** `--sub-objects`, `--prefixes` (or auto-populated by `--tech`)
+**Requires:** `-a`, `-o`
+**Optional:** `--sub-objects`, `--prefixes`
 
 ### `byfield` — Lookup-by-field patterns
-Generates RPC-style lookup methods with connector words (by, with, for, from, using):
+RPC-style lookup methods with connectors (by, with, for, from, using):
 ```
-getUserByEmail       (camel)
-get_user_by_email    (snake)
-get-user-by-email    (kebab)
-FindOrderByStatus    (pascal)
+getUserByEmail, get_user_by_email, get-user-by-email, FindOrderByStatus
 ```
-**Requires:** `-a` actions, `-o` objects, `--fields`
+**Requires:** `-a`, `-o`, `--fields`
 
 ### `prefixed` — Prefixed patterns
-Prepends routing prefixes to action-object combos:
+Prepends routing prefixes:
 ```
-admin-create-user
-internal-delete-order
-v1-get-payment
+admin-create-user, internal-delete-order, v1-get-payment
 ```
-**Requires:** `-a` actions, `-o` objects, `--prefixes`
+**Requires:** `-a`, `-o`, `--prefixes`
 
 ### `suffixed` — Suffixed patterns
-Appends format suffixes to action-object combos:
+Appends format suffixes:
 ```
-export-orders-json
-create-report-pdf
-get-users-csv
+export-orders-json, create-report-pdf, get-users-csv
 ```
-**Requires:** `-a` actions, `-o` objects, `--suffixes`
+**Requires:** `-a`, `-o`, `--suffixes`
 
 ### `event` — Event/callback patterns
-Generates event handler, lifecycle hook, and boolean check names:
+Event handlers, lifecycle hooks, and boolean checks:
 ```
-onUserCreate         (event prefix + object + action)
-handlePaymentProcess (handler prefix)
-beforeOrderDelete    (lifecycle hook)
-doExport             (single prefix + action)
-isActive             (boolean check)
-hasPermission        (capability check)
+onUserCreate, handlePaymentProcess, beforeOrderDelete
+doExport, isActive, hasPermission, canDelete
 ```
-**Requires:** `-a` actions, `-o` objects
+**Requires:** `-a`, `-o`
 
-Use `all` to run every pattern: `-p all`
+```bash
+# Single pattern
+-p rest
 
-Multiple patterns: `-p 2 rest byfield`
+# Multiple patterns
+-p 2 rest byfield
 
----
+# All patterns
+-p all
+```
 
-## Technology Profiles
-
-The `--tech` flag auto-configures format, patterns, trailing slash, magic paths, and API prefixes for a specific framework.
-
-| Profile | Framework | Formats | Patterns | Trailing Slash | Magic Paths |
-|---------|-----------|---------|----------|:--------------:|:-----------:|
-| `spring` | Spring Boot / Java | camel | 2, rest, byfield, event | No | 42 |
-| `django` | Django / DRF | snake, kebab | 2, rest | Yes | 25 |
-| `express` | Express.js / Node.js | camel, kebab | 2, rest, event | No | 22 |
-| `dotnet` | ASP.NET / C# | pascal, camel | 2, rest, byfield | No | 25 |
-| `rails` | Ruby on Rails | snake, kebab | 2, rest | No | 18 |
-| `laravel` | Laravel / PHP | snake, kebab | 2, rest | No | 29 |
-| `fastapi` | FastAPI / Python | snake, kebab | 2, rest | No | 19 |
-| `flask` | Flask / Python | snake, kebab | 2, rest | No | 17 |
-| `go` | Go (Gin/Echo/Fiber) | kebab, snake | 2, rest | No | 24 |
-| `nextjs` | Next.js | camel, kebab | 2, rest | No | 12 |
-| `graphql` | GraphQL API | camel | 2, byfield, event | No | 8 |
-
-Each profile includes:
-- **Magic paths**: Framework-specific fingerprint endpoints (actuator for Spring, /__debug__/ for Django, /telescope for Laravel, /debug/pprof/ for Go, etc.)
-- **Path prefixes**: Common API base paths for that framework (/api, /api/v1, etc.)
-- **Format + pattern selection**: What real-world apps of that type actually use
-
-When `--tech` is set, its magic paths are automatically injected into the output. You don't need a separate recon step.
-
----
-
-## Scan Profiles
-
-The `--profile` flag provides pre-configured scan strategies:
-
-| Profile | Description | Formats | Patterns | Tier |
-|---------|-------------|---------|----------|------|
-| `recon` | Quick high-probability hits | kebab, camel | 2, rest | high |
-| `full` | Maximum coverage, all patterns | all 7 formats | all 7 patterns | all |
-| `rest` | REST paths only | kebab | rest | all |
-| `rpc` | RPC-style function names | camel, pascal | 2, byfield, event | all |
-
-Profiles set defaults for format, pattern, and tier — but explicit flags (`-f`, `-p`, `--tier`) always override them.
+Default: `2`
 
 ---
 
 ## Priority Tiers
 
-Tier filtering reduces the combinatorial space to the most statistically likely endpoints:
+Tier filtering (`--tier`) reduces the combinatorial space to the most likely endpoints:
 
-| Tier | Actions | Objects | Description |
-|------|--------:|--------:|-------------|
-| `high` | ~68 | ~124 | Core CRUD verbs × common resources (user, order, payment, config) |
-| `medium` | ~167 | ~288 | Adds clone, deploy, schedule × pipeline, workflow, cluster |
-| `all` | 528 | 1,800 | Everything in your seed files |
-
-The `high` tier targets the endpoints that exist in virtually every API. The `medium` tier adds operations and resources common in production systems. Use `all` when you need maximum breadth.
+| Tier | Actions | Objects | Use Case |
+|------|--------:|--------:|----------|
+| `high` | ~68 | ~124 | Core CRUD × common resources. Fast, focused scans. |
+| `medium` | ~167 | ~288 | Adds clone, deploy, schedule × pipeline, workflow, cluster. |
+| `all` | 528 | 1,800 | Everything in the seed files. Maximum breadth. |
 
 ```bash
-# Fast, focused scan (~17k 2-part kebab endpoints)
-python api-wordlist-gen.py -a words/top-api-verbs.txt -o words/top-api-nouns.txt \
-  --tier high -f kebab -p 2
+# Fast focused scan
+--tier high
 
-# Broader coverage
-python api-wordlist-gen.py -a words/top-api-verbs.txt -o words/top-api-nouns.txt \
-  --tier medium -p 2 rest
+# Good coverage
+--tier medium
+
+# Everything (default)
+--tier all
 ```
-
----
-
-## Recon Probe Mode
-
-Before generating endpoints, identify the target's tech stack:
-
-```bash
-# Dump all 203 framework fingerprint paths
-python api-wordlist-gen.py --recon-probe -O probe-all.txt
-
-# Probe only for a specific framework
-python api-wordlist-gen.py --recon-probe --tech spring -O probe-spring.txt
-python api-wordlist-gen.py --recon-probe --tech django -O probe-django.txt
-```
-
-Recon probe outputs known magic paths — framework admin panels, debug endpoints, swagger UIs, actuator endpoints, profiling tools. Feed these to your fuzzer first:
-
-```bash
-ffuf -u https://target.com/FUZZ -w probe-all.txt -mc 200,301,302,403
-```
-
-A hit on `/actuator/health` = Spring Boot. A hit on `/__debug__/` = Django. A hit on `/telescope` = Laravel. Now you know what `--tech` to use for targeted generation.
-
-**Fingerprint path counts per framework:**
-
-| Framework | Paths | Key Indicators |
-|-----------|------:|----------------|
-| Spring Boot | 42 | `/actuator/*`, `/h2-console`, `/jolokia`, `/swagger-ui` |
-| Django/DRF | 25 | `/admin/`, `/__debug__/`, `/silk/`, `/django-rq/` |
-| ASP.NET | 25 | `/hangfire`, `/elmah`, `/signalr/*`, `/odata` |
-| Laravel | 29 | `/telescope`, `/horizon`, `/nova`, `/_ignition/*` |
-| Go | 24 | `/debug/pprof/*`, `/healthz`, `/readyz`, `/livez` |
-| Express.js | 22 | `/__express_route_map`, `/graphql`, `/socket.io/` |
-| FastAPI | 19 | `/docs`, `/redoc`, `/openapi.json` |
-| Rails | 18 | `/rails/info/*`, `/sidekiq`, `/letter_opener` |
-| Flask | 17 | `/flasgger/`, `/apidocs`, `/graphiql` |
-| Next.js | 12 | `/api/auth/*`, `/_next/*`, `/api/trpc/` |
-| GraphQL | 8 | `/graphql`, `/graphiql`, `/playground`, `/voyager` |
 
 ---
 
@@ -330,12 +231,6 @@ A hit on `/actuator/health` = Spring Boot. A hit on `/__debug__/` = Django. A hi
 
 The `--methods` flag prefixes each endpoint with its inferred HTTP method:
 
-```bash
-python api-wordlist-gen.py -a words/top-api-verbs.txt -o words/top-api-nouns.txt \
-  --tech spring --methods --tier high -O methods.txt
-```
-
-Output:
 ```
 POST createUser
 GET getUser
@@ -343,69 +238,78 @@ PUT updateUser
 DELETE deleteUser
 GET listOrders
 POST submitPayment
-PATCH patch
 GET /users/{id}
 POST /users/{id}/activate
 DELETE /users/{id}/sessions
 ```
 
-Method inference uses a mapping of 90+ verb→method rules:
+Method inference maps 90+ verbs:
 - `get, list, search, find, fetch, export, download` → **GET**
-- `create, add, register, submit, upload, send, execute` → **POST**
+- `create, add, register, submit, upload, execute` → **POST**
 - `update, edit, modify, replace, save, upsert` → **PUT**
 - `patch` → **PATCH**
 - `delete, remove, destroy, purge, revoke, cancel` → **DELETE**
-
-This is useful for method-aware fuzzing tools or when building targeted Burp Intruder/ffuf configs.
 
 ---
 
 ## Plural Intelligence
 
-REST APIs use plural nouns for collections: `/users/{id}`, not `/user/{id}`. The `--no-plural` flag disables this, but by default the engine auto-pluralizes:
+REST APIs use plural nouns for collections: `/users/{id}`, not `/user/{id}`. Enabled by default in the `rest` pattern. Disable with `--no-plural`.
 
-**Handled cases:**
-- Irregular plurals: person→people, child→children, datum→data, index→indices, schema→schemas
+**Handles:**
+- Irregular: person→people, child→children, datum→data, index→indices, schema→schemas
 - API-specific: status→statuses, address→addresses, cache→caches, batch→batches
-- Suffix rules: -s/-sh/-ch/-x/-z→+es, consonant+y→ies, -f/-fe→ves
+- Suffix rules: -s/-sh/-ch/-x/-z → +es, consonant+y → ies, -f/-fe → ves
 - Uncountable: data, metadata, analytics, metrics, health, compliance, telemetry
-- Already plural: words ending in -s (except -ss, -us, -is, -xs) pass through
-
-```
-user     → /users/{id}/activate
-address  → /addresses/{id}
-policy   → /policies/{id}
-cache    → /caches/{id}
-analysis → /analyses
-datum    → /data
-health   → /health  (uncountable)
-```
+- Already plural: words ending in -s pass through
 
 ---
 
 ## Input Cleaning Pipeline
 
-All seed wordlists pass through an automatic cleaning pipeline:
+All seed wordlists are automatically cleaned on load:
 
-1. **Strip** whitespace
-2. **Remove** blank lines and `#` comments
-3. **Lowercase** everything
-4. **Remove** non-alphanumeric characters (hyphens, underscores, etc.)
-5. **Min length** filter (default: 2 characters, configurable with `--min-length`)
-6. **Remove** pure-number strings (unless `--keep-numbers`)
-7. **Deduplicate**
-8. **Sort** alphabetically
+1. Strip whitespace
+2. Remove blank lines and `#` comments
+3. Lowercase everything
+4. Remove non-alphanumeric characters
+5. Min length filter (default: 2, configurable with `--min-length`)
+6. Remove pure-number strings (unless `--keep-numbers`)
+7. Deduplicate
+8. Sort alphabetically
 
-The pipeline reports statistics to stderr:
-```
-[*] Loaded words/top-api-verbs.txt
-    Raw:    600 → Cleaned:    528 (removed 72: 0 dupes, 0 short, 32 empty, 0 nums, 40 comments, 0 invalid)
-```
-
-Use `--clean-only` to just clean your wordlists without generating endpoints:
+Use `--clean-only` to just clean wordlists without generating:
 ```bash
-python api-wordlist-gen.py -a dirty-verbs.txt -o messy-nouns.txt --clean-only --save-cleaned cleaned/
+python api-wordlist-gen.py -a dirty.txt -o messy.txt --clean-only --save-cleaned cleaned/
 ```
+
+---
+
+## Tech Stack Cheat Sheet
+
+Once you've identified the target's technology through your own recon, use these format + pattern combinations:
+
+| Tech Stack | Formats | Patterns | Extra Flags |
+|------------|---------|----------|-------------|
+| **Spring Boot / Java** | `-f camel` | `-p 2 rest byfield event` | `--fields fields.txt` |
+| **Django / DRF** | `-f snake kebab` | `-p 2 rest` | `--trailing-slash` |
+| **Express.js / Node.js** | `-f camel kebab` | `-p 2 rest event` | |
+| **ASP.NET / C#** | `-f pascal camel` | `-p 2 rest byfield` | `--fields fields.txt` |
+| **Ruby on Rails** | `-f snake kebab` | `-p 2 rest` | |
+| **Laravel / PHP** | `-f snake kebab` | `-p 2 rest` | |
+| **FastAPI / Python** | `-f snake kebab` | `-p 2 rest` | |
+| **Flask / Python** | `-f snake kebab` | `-p 2 rest` | |
+| **Go (Gin/Echo/Fiber)** | `-f kebab snake` | `-p 2 rest` | |
+| **Next.js** | `-f camel kebab` | `-p 2 rest` | |
+| **GraphQL** | `-f camel` | `-p 2 byfield event` | `--fields fields.txt` |
+
+**Why these choices?**
+- **Spring/Java** → camelCase is the Java convention; Spring exposes RPC-style names (`getUserById`) and REST paths
+- **Django/Rails/Laravel/Flask/FastAPI** → Python/Ruby/PHP communities use snake_case; Django enforces trailing slashes
+- **ASP.NET** → C# uses PascalCase everywhere (`GetUser`, `CreateOrder`)
+- **Go** → kebab-case URLs are idiomatic in Go HTTP frameworks
+- **GraphQL** → operations are always camelCase (`getUser`, `createOrder`); no URL paths to fuzz
+- **Express/Next.js** → JavaScript ecosystem uses camelCase, but URL paths often use kebab-case
 
 ---
 
@@ -418,148 +322,134 @@ python api-wordlist-gen.py -a dirty-verbs.txt -o messy-nouns.txt --clean-only --
 | `-a`, `--actions` | Path to actions/verbs wordlist |
 | `-o`, `--objects` | Path to objects/nouns wordlist |
 
-Required for all modes except `--recon-probe` and `--clean-only`.
-
 ### Optional Wordlists
 
 | Flag | Description | Used By |
 |------|-------------|---------|
-| `-m`, `--modifiers` | Modifiers wordlist | 3-part pattern |
-| `--prefixes` | Prefixes wordlist | prefixed pattern, REST path prefixes |
-| `--suffixes` | Suffixes wordlist | suffixed pattern |
-| `--fields` | Fields wordlist | byfield pattern |
-| `--sub-objects` | Sub-objects wordlist | REST nested resources |
+| `-m`, `--modifiers` | Modifiers wordlist | `3` pattern |
+| `--prefixes` | Prefixes wordlist | `prefixed` and `rest` patterns |
+| `--suffixes` | Suffixes wordlist | `suffixed` pattern |
+| `--fields` | Fields wordlist | `byfield` pattern |
+| `--sub-objects` | Sub-objects wordlist | `rest` nested resources |
 
-### Tech & Profile
+### Format & Pattern
 
-| Flag | Description |
-|------|-------------|
-| `--tech TECH` | Target framework (spring, django, express, dotnet, rails, laravel, fastapi, flask, go, nextjs, graphql) |
-| `--profile PROFILE` | Scan preset (recon, full, rest, rpc) |
-| `--tier TIER` | Priority tier (high, medium, all) |
-| `--recon-probe` | Output framework fingerprint paths and exit |
-| `--methods` | Prefix output with HTTP method hints |
-| `--trailing-slash` | Add trailing slash to REST paths |
-| `--no-plural` | Disable auto-pluralization in REST patterns |
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-f`, `--formats` | Naming formats (kebab, snake, dot, concat, camel, pascal, path, all) | kebab snake camel |
+| `-p`, `--patterns` | Generation patterns (2, 3, rest, byfield, prefixed, suffixed, event, all) | 2 |
 
-### Format & Pattern Selection
+### Generation Options
 
-| Flag | Description |
-|------|-------------|
-| `-f`, `--formats` | Output naming formats (kebab, snake, dot, concat, camel, pascal, path, all) |
-| `-p`, `--patterns` | Generation patterns (2, 3, rest, byfield, prefixed, suffixed, event, all) |
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--tier` | Priority tier (high, medium, all) | all |
+| `--methods` | Prefix output with HTTP method hints | off |
+| `--trailing-slash` | Add trailing slash to REST paths | off |
+| `--no-plural` | Disable auto-pluralization in REST | off |
 
 ### Cleaning Options
 
-| Flag | Description |
-|------|-------------|
-| `--min-length N` | Minimum word length after cleaning (default: 2) |
-| `--keep-numbers` | Keep pure number strings |
-| `--clean-only` | Only clean input wordlists and exit |
-| `--save-cleaned DIR` | Save cleaned wordlists to directory |
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--min-length N` | Minimum word length after cleaning | 2 |
+| `--keep-numbers` | Keep pure number strings | off |
+| `--clean-only` | Only clean input wordlists and exit | off |
+| `--save-cleaned DIR` | Save cleaned wordlists to directory | off |
 
 ### Output Control
 
-| Flag | Description |
-|------|-------------|
-| `-O`, `--output FILE` | Output file (default: stdout) |
-| `--sort` | Sort output alphabetically |
-| `--stats` | Print generation statistics to stderr |
-| `--limit N` | Limit output to N lines |
-| `--no-dedup` | Skip deduplication (faster for huge lists) |
-| `--preview` | Show estimated line count and exit |
-
-### Flag Precedence
-
-When multiple sources configure the same setting:
-
-```
-Explicit -f / -p flags  (highest priority — always wins)
-  ↓
---tech profile          (sets framework-optimal formats + patterns)
-  ↓
---profile preset        (sets scan strategy defaults)
-  ↓
-Hardcoded defaults      (kebab+snake+camel, pattern 2)
-```
-
-You can combine `--tech` with explicit flags to override specific choices:
-```bash
-# Use Spring's patterns but force kebab format instead of camelCase
-python api-wordlist-gen.py -a verbs.txt -o nouns.txt --tech spring -f kebab
-```
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-O`, `--output FILE` | Output file | stdout |
+| `--sort` | Sort output alphabetically | off |
+| `--stats` | Print generation statistics to stderr | off |
+| `--limit N` | Limit output to N lines | 0 (unlimited) |
+| `--no-dedup` | Skip deduplication | off |
+| `--preview` | Show estimated line count and exit | off |
 
 ---
 
-## Real-World Workflows
+## Usage Examples
 
-### Workflow 1: Unknown Target — Full Recon
-
-You have a target API at `https://api.target.com` and no idea what stack it runs.
-
+### Basic 2-part generation
 ```bash
-# Step 1: Probe for framework fingerprints
-python api-wordlist-gen.py --recon-probe -O probe.txt
-ffuf -u https://api.target.com/FUZZ -w probe.txt -mc 200,301,302,403
-
-# Step 2: You got hits on /actuator/health and /swagger-ui → Spring Boot
-# Generate Spring-targeted endpoints
-python api-wordlist-gen.py \
-  -a words/top-api-verbs.txt \
-  -o words/top-api-nouns.txt \
-  --tech spring --tier high \
-  -O spring-high.txt
-
-# Step 3: Fuzz with targeted list
-ffuf -u https://api.target.com/api/v1/FUZZ -w spring-high.txt -mc 200,201,204,401,403
+python api-wordlist-gen.py -a words/top-api-verbs.txt -o words/top-api-nouns.txt \
+  -f kebab camel -p 2 -O basic.txt
 ```
 
-### Workflow 2: Known Django REST Framework
-
+### Spring Boot API (camelCase + byField + events)
 ```bash
 python api-wordlist-gen.py \
   -a words/top-api-verbs.txt \
   -o words/top-api-nouns.txt \
-  --tech django --tier medium \
-  --sub-objects words/sub-objects.txt \
+  -f camel \
+  -p 2 rest byfield event \
+  --fields words/fields/top-fields.txt \
+  --tier high \
+  -O spring-endpoints.txt
+```
+
+### Django REST Framework (snake_case + trailing slashes)
+```bash
+python api-wordlist-gen.py \
+  -a words/top-api-verbs.txt \
+  -o words/top-api-nouns.txt \
+  -f snake kebab \
+  -p 2 rest \
+  --trailing-slash \
+  --tier medium \
   -O django-endpoints.txt
-
-# Django uses trailing slashes — the tool adds them automatically with --tech django
-# Output: /users/, /users/{id}/, /users/{id}/roles/, etc.
 ```
 
-### Workflow 3: GraphQL Operation Names
-
-GraphQL doesn't use URL paths — it uses operation names in camelCase:
-
+### ASP.NET (PascalCase + byField lookups)
 ```bash
 python api-wordlist-gen.py \
   -a words/top-api-verbs.txt \
   -o words/top-api-nouns.txt \
-  --tech graphql --tier high \
+  -f pascal camel \
+  -p 2 rest byfield \
   --fields words/fields/top-fields.txt \
+  --tier high \
+  -O dotnet-endpoints.txt
+```
+
+### Go REST API (kebab-case paths)
+```bash
+python api-wordlist-gen.py \
+  -a words/top-api-verbs.txt \
+  -o words/top-api-nouns.txt \
+  -f kebab \
+  -p rest \
+  --tier high \
+  -O go-endpoints.txt
+```
+
+### GraphQL operation names
+```bash
+python api-wordlist-gen.py \
+  -a words/top-api-verbs.txt \
+  -o words/top-api-nouns.txt \
+  -f camel \
+  -p 2 byfield event \
+  --fields words/fields/top-fields.txt \
+  --tier high \
   -O graphql-ops.txt
-
-# Output: getUser, createOrder, getUserByEmail, onPaymentCreate, etc.
 ```
 
-### Workflow 4: ASP.NET with Method Hints
-
+### REST paths with nested resources and prefixes
 ```bash
 python api-wordlist-gen.py \
   -a words/top-api-verbs.txt \
   -o words/top-api-nouns.txt \
-  --tech dotnet --tier high --methods \
-  --fields words/fields/top-fields.txt \
-  -O dotnet-methods.txt
-
-# Output: GET GetUser, POST CreateOrder, DELETE RemovePayment, etc.
+  -p rest \
+  --sub-objects words/sub-objects.txt \
+  --prefixes words/top-prefixes.txt \
+  --tier high \
+  -O rest-deep.txt
 ```
 
-### Workflow 5: Maximum Coverage Brute Force
-
-When you don't care about noise and want everything:
-
+### Full generation with HTTP method hints
 ```bash
 python api-wordlist-gen.py \
   -a words/top-api-verbs.txt \
@@ -569,64 +459,27 @@ python api-wordlist-gen.py \
   --suffixes words/suffixes.txt \
   --fields words/fields/top-fields.txt \
   --sub-objects words/sub-objects.txt \
-  --profile full \
-  -O everything.txt --stats
+  -f all -p all \
+  --methods --sort --stats \
+  -O everything.txt
 ```
 
-### Workflow 6: Quick Recon with Minimal Output
-
+### Preview before generating
 ```bash
 python api-wordlist-gen.py \
   -a words/top-api-verbs.txt \
   -o words/top-api-nouns.txt \
-  --profile recon \
-  -O recon-quick.txt
-
-# High-tier only, kebab+camel, 2-part+REST patterns
-# Focused list for initial discovery
-```
-
-### Workflow 7: REST Paths with Nested Resources
-
-```bash
-python api-wordlist-gen.py \
-  -a words/top-api-verbs.txt \
-  -o words/top-api-nouns.txt \
-  --sub-objects words/sub-objects.txt \
-  --prefixes words/top-prefixes.txt \
-  -p rest --tier high \
-  -O rest-deep.txt
-
-# Output includes:
-# /users/{id}/roles
-# /users/{id}/roles/{sid}
-# /users/{id}/permissions
-# /api/v1/orders/{id}/items
-# /api/v2/payments/{id}/refunds
-```
-
-### Workflow 8: Clean Dirty Wordlists
-
-```bash
-# Just clean without generating — useful for preparing custom wordlists
-python api-wordlist-gen.py \
-  -a my-dirty-verbs.txt \
-  -o my-messy-nouns.txt \
-  --clean-only --save-cleaned cleaned/
-```
-
-### Workflow 9: Preview Before Generating
-
-```bash
-# Check how many endpoints will be generated before committing
-python api-wordlist-gen.py \
-  -a words/top-api-verbs.txt \
-  -o words/top-api-nouns.txt \
-  --tech spring --tier medium \
+  -f camel -p 2 rest byfield \
   --fields words/fields/top-fields.txt \
+  --tier high \
   --preview
+```
 
-# [*] Estimated output: ~162,000 lines
+### Clean dirty wordlists
+```bash
+python api-wordlist-gen.py \
+  -a my-dirty-verbs.txt -o my-messy-nouns.txt \
+  --clean-only --save-cleaned cleaned/
 ```
 
 ---
@@ -638,13 +491,13 @@ Approximate output sizes with the included seed wordlists:
 | Configuration | Approx. Output |
 |---------------|---------------:|
 | `--tier high -f kebab -p 2` | ~17,000 |
-| `--tier high --tech spring` | ~160,000 |
-| `--profile recon` | ~50,000 |
-| `--tier medium -p 2 rest` | ~150,000 |
-| `--tech django --tier high` | ~85,000 |
-| `--profile full` (all patterns, all formats, all tiers) | millions |
+| `--tier high -f camel -p 2 rest` | ~50,000 |
+| `--tier medium -f kebab snake -p 2` | ~190,000 |
+| `--tier medium -p 2 rest` | ~350,000 |
+| `-f all -p 2` (all tiers) | ~1,900,000 |
+| `-f all -p all` (everything) | millions |
 
-Use `--preview` to get an estimate before generating. Use `--limit N` to cap the output.
+Use `--preview` to get an estimate before generating. Use `--limit N` to cap output.
 
 ---
 
