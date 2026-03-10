@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────
+# Status Fields — State/status properties for byField patterns
+# Used in: getOrderBySTATUS, findUserBySTATE
+# ─────────────────────────────────────────────
+
+# ── Core status fields ──
+status
+state
+phase
+stage
+step
+condition
+health
+readiness
+liveness
+
+# ── Boolean states ──
+active
+enabled
+verified
+approved
+blocked
+banned
+locked
+suspended
+archived
+deleted
+expired
+pending
+published
+draft
+flagged
+hidden
+visible
+muted
+starred
+featured
+pinned
+completed
+cancelled
+failed
+rejected
+revoked
+deprecated
+disabled
+inactive
+closed
+open
+available
+online
+offline
+connected
+enrolled
+registered
+confirmed
+validated
+
+# ── Priority / Severity ──
+priority
+severity
+urgency
+level
+tier
+rank
+criticality
+impact

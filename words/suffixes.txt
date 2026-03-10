@@ -1,0 +1,91 @@
+# ─────────────────────────────────────────────
+# API Suffixes — Format/type endings for endpoint patterns
+# Used in: export-orders-CSV, download-report-PDF
+# ─────────────────────────────────────────────
+
+# ── Data serialization formats ──
+json
+xml
+yaml
+yml
+csv
+tsv
+html
+txt
+plain
+raw
+binary
+base64
+protobuf
+msgpack
+avro
+parquet
+graphql
+grpc
+
+# ── Document / File formats ──
+pdf
+doc
+docx
+xls
+xlsx
+ppt
+pptx
+rtf
+odt
+ods
+markdown
+md
+
+# ── Image formats ──
+png
+jpg
+jpeg
+gif
+svg
+webp
+ico
+bmp
+tiff
+
+# ── Archive / Compression ──
+zip
+tar
+gz
+gzip
+bz2
+rar
+7z
+
+# ── Export / Report types ──
+report
+summary
+detail
+details
+full
+brief
+compact
+extended
+lite
+count
+total
+stats
+metrics
+overview
+list
+all
+batch
+bulk
+dump
+export
+backup
+snapshot
+archive
+feed
+digest
+preview
+template
+sample
+log
+logs
+stream

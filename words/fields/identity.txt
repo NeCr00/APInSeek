@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────
+# Identity Fields — Entity identifiers for byField patterns
+# Used in: getUserByEMAIL, findOrderBySKU
+# ─────────────────────────────────────────────
+
+# ── Primary identifiers ──
+id
+uid
+uuid
+guid
+slug
+ref
+reference
+code
+key
+hash
+sku
+arn
+oid
+sid
+rid
+tid
+externalid
+internalid
+correlationid
+number
+serial
+index
+
+# ── User identity ──
+username
+name
+firstname
+lastname
+fullname
+displayname
+nickname
+handle
+alias
+email
+phone
+mobile
+phonenumber
+
+# ── Auth tokens / secrets ──
+token
+accesstoken
+refreshtoken
+idtoken
+apikey
+secret
+password
+passkey
+session
+sessionid
+cookie
+fingerprint
+otp
+pin
+mfa
+totp
+hotp
+nonce
+jwt
+jti
+
+# ── Auth scopes ──
+scope
+permission
+role
+privilege
+claim
+credential
+principal
+subject
+authority
+
+# ── Profile attributes ──
+avatar
+photo
+picture
+bio
+age
+gender
+dob
+birthdate
+ssn
+address
